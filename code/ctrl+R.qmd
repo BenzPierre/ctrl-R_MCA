@@ -1,0 +1,352 @@
+---
+title: "Beyond numbers. Multiple Correspondence Analysis"
+author:
+  - name: Pierre Benz
+    affiliation:
+      - name: École de bibliothéconomie et des sciences de l'information, Université de Montréal, Montréal, Canada.
+    email: pierre.benz@umontreal.ca
+    corresponding: true
+  - name: Thierry Rossier
+    affiliation:
+      - name: Life Course and Inequality Research Centre (LIVES), University of Lausanne, Lausanne, Switzerland.
+      - name: Department of Sociology, London School of Economics, London, United Kingdom.    
+    email: thierry.rossier@unil.ch
+    corresponding: false
+strip-comments: true
+format: 
+  pdf:
+    geometry:
+      - top=30mm
+      - left=20mm
+    mainfont: Times New Roman
+    keep-tex: true
+  html: default
+filters:
+  - authors-block
+---
+
+```{r}
+#| echo: false
+default_chunk_hook  <- knitr::knit_hooks$get("chunk")
+
+latex_font_size <- c("Huge", "huge", "LARGE", "Large", 
+                     "large", "normalsize", "small", 
+                     "footnotesize", "scriptsize", "tiny")
+
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- default_chunk_hook(x, options)
+  if(options$size %in% latex_font_size) {
+    paste0("\n \\", options$size, "\n\n", 
+      x, 
+      "\n\n \\normalsize"
+    )
+  } else {
+    x
+  }
+})
+```
+
+## Description
+
+This document supports the ctrl+R session 'Beyond numbers. Multiple Correspondence Analysis' by Thierry Rossier and Pierre Benz, University of Lausanne, Lausanne, December 5, 2024.
+
+## Install packages
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+library(soc.ca) # for multiple correspondence analysis
+library(tidyverse) # for data manipulation
+library(FactoMineR) # for catdes function (univariate analysis)
+library(factoextra) # for silhouette analysis (k-means clustering)
+
+# to install the packages, please use: 
+# install.packages(c("soc.ca", "tidyverse", "FactoMineR", "factoextra"))
+```
+
+After loading the 'soc.ca' package, you can access its basic information through the help file:
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+?soc.ca
+```
+
+## Load data and set 'active' and 'supplementary' objects
+
+Use `?soc.ca` to access basic information about the package in the 'Help' pane. The 'Examples' section provides the code needed to load the 'taste' dataset and specify variables as either 'active' or 'sup'.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+data(taste)
+names(taste)
+
+# Create a data frame of factors containing all the active variables (+ remove supplementary individuals)
+taste          <- taste[which(taste$Isup == 'Active'), ]
+
+attach(taste)
+active         <- data.frame(TV, Film, Art, Eat)
+sup            <- data.frame(Gender, Age, Income)
+detach(taste)
+```
+
+Alternatively, you can use the tidyverse as follows:
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+active <- taste %>% select(TV, Film, Art, Eat)
+sup <- taste %>% select(Gender, Age, Income)
+```
+
+**Methodological Note**: Modalities must have a frequency of at least 5%. Frequencies below this threshold can distort the factorial structure, as modalities represented by very few cases tend to diverge significantly from the broader dataset, leading to disproportionate influence.
+
+## Run the MCA
+
+Here is the code to run MCA and inspect the results:
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+result         <- soc.mca(active, sup)
+result
+```
+
+You need to know the importance of the axes, as well as the list of the contributive modalities.
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+variance(result)
+contribution(result, dim = 1)
+contribution(result, dim = 2)
+```
+
+You might also be interested in examining the contributions of all modalities to the axes (e.g., axes 1 and 2).
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+contribution(result, 1:2, mode = "variable")
+```
+
+## Plot the results
+
+You can get all the necessary information about the plotting functions by using ?map.active, ?map.ctr, ?map.sup, ?map.ind.
+
+### Cloud of active modalities
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+#| fig.cap: "Cloud of active modalities. The first dimension is shown horizontally, and the second dimension is shown vertically."
+#| fig.width: 10
+#| fig.height: 10
+#| out.width: "75%"
+map.active(
+  result,
+  dim = c(1, 2),
+  point.shape = "variable",
+  point.alpha = 0.8,
+  point.fill = "whitesmoke",
+  point.color = "black",
+  point.size = "freq",
+  label = TRUE,
+  label.repel = FALSE,
+  label.alpha = 0.8,
+  label.color = "black",
+  label.size = 4,
+  label.fill = NULL,
+  map.title = "active",
+  labelx = "default",
+  labely = "default",
+  legend = NULL
+) + xlim(-1.4,1.4) + ylim(-1.4,1.4)
+```
+
+### Cloud of contributive modalities
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+#| fig.cap: "Cloud of contributive modalities. The first dimension is shown horizontally, and the second dimension is shown vertically."
+#| fig.width: 10
+#| fig.height: 10
+#| out.width: "75%"
+map.ctr(
+  result,
+  dim = c(1, 2),
+  point.shape = "variable",
+  point.alpha = 0.8,
+  point.fill = "whitesmoke",
+  point.color = "black",
+  point.size = "freq",
+  label = TRUE,
+  label.repel = FALSE,
+  label.alpha = 0.8,
+  label.color = "black",
+  label.size = 4,
+  label.fill = NULL,
+  map.title = "active",
+  labelx = "default",
+  labely = "default",
+  legend = NULL
+) + xlim(-1.4,1.4) + ylim(-1.4,1.4)
+```
+
+### Cloud of supplementary modalities
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+#| fig.cap: "Cloud of supplementary modalities. The first dimension is shown horizontally, and the second dimension is shown vertically."
+#| fig.width: 10
+#| fig.height: 10
+#| out.width: "75%"
+map.sup(
+  result,
+  dim = c(1, 2),
+  point.shape = "variable",
+  point.alpha = 0.8,
+  point.fill = "whitesmoke",
+  point.color = "black",
+  point.size = "freq",
+  label = TRUE,
+  label.repel = FALSE,
+  label.alpha = 0.8,
+  label.color = "black",
+  label.size = 4,
+  label.fill = NULL,
+  map.title = "active",
+  labelx = "default",
+  labely = "default",
+  legend = NULL
+) + xlim(-1.4,1.4) + ylim(-1.4,1.4)
+```
+
+### Cloud of individuals
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+#| fig.cap: "Cloud of individuals. The first dimension is shown horizontally, and the second dimension is shown vertically."
+#| fig.width: 10
+#| fig.height: 10
+#| out.width: "75%"
+# map the cloud of individuals
+map <- map.ind(result, point.color = "black", point.size = 1.5, map.title = "")
+map + xlim(-1.75,1.75) + ylim(-1.75,1.75)
+```
+
+## Clustering
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+
+set.seed(123)
+
+# library(factoextra)
+
+# retrieve coordinates of individuals on the three first dimensions
+coords <- result$coord.ind[, 1:3]
+
+# optimal number of clusters
+nbcluters <- fviz_nbclust(coords, kmeans, method = "silhouette") # wss
+nbcluters$data
+nbcluters
+
+# run k-means clustering
+kmeanclust <- kmeans(coords, 4, nstart = 25)
+table(kmeanclust$cluster)
+taste$kmeanclust <- as.factor(kmeanclust$cluster)
+table(taste$kmeanclust)
+```
+
+### Plot clusters
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+#| fig.cap: "Cluster plot. The first dimension is shown horizontally, and the second dimension is shown vertically."
+#| fig.width: 10
+#| fig.height: 10
+#| out.width: "75%"
+plot <- map.ind(result, point.fill = as.factor(taste$kmeanclust), point.size = 2.5)
+palette <- c("coral2", "deepskyblue3", "green", "grey20")
+plot + scale_fill_manual(values=palette) + xlim(-1.75,1.75) + ylim(-1.75,1.75)
+```
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+#| fig.cap: "Cluster plot with concentration ellipses. The first dimension is shown horizontally, and the second dimension is shown vertically."
+#| fig.width: 10
+#| fig.height: 10
+#| out.width: "75%"
+plot <- map.ellipse(result, map, taste$kmeanclust, draw.levels = 1:nlevels(taste$kmeanclust), label.size = 5)
+palette <- c("coral2", "deepskyblue3", "green", "grey20")
+plot + scale_fill_manual(values=palette) + xlim(-1.75,1.75) + ylim(-1.75,1.75) + labs(x = "Dimension 1 (63.5%)", y = "Dimension 2 (16.9%)")
+```
+
+### Inspect the distribution of the modalities in the clusters
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+#| size: scriptsize
+# we look for over / under-representations of the modalities. 
+# for furher information on the method, see FactoMineR documentation. 
+# see also: Husson, F., Lê, S., & Pagès, J. (2017). Exploratory multivariate analysis by example using R. Boca Raton: CRC press.
+
+# library(FactoMineR)
+names(taste)
+catdes(taste, 10, proba = 0.05) # clusters
+
+# alternatively, univariate analysis for gender
+catdes(taste, 7, proba = 0.05) # gender
+```
+
+In here, we are interested in the distribution of each modality in each cluster (or any other variable, e.g., gender) according to the proportion of individuals characterized by the modality who also belong to the class and the proportion of the modality in the general population (Husson et al., 2017). For each modality, a p-value and a test-value (v-test) indicate the probability that the class distribution is not due to chance. It is thus the equivalent of a test for comparing averages when the variable is quantitative, and a test for comparing proportions when the variable is categorical. The p-value threshold is set at 0.05 and corresponds to a test value of + or - 2. The latter has a sign, a positive sign meaning that the modality is over-represented in the class, a negative sign that it is under-represented. The v-test thus makes it possible to sort the modalities in order of importance for their contribution to the class.
+
+## References
+
+Hjellbrekke, J. (2018). *Multiple correspondence analysis for the social sciences*. Routledge.
+
+Husson, F., Le, S. and Pages, J. (2017). *Exploratory Multivariate Analysis by Example Using R.* Boca Raton: CRC Press Book.
+
+Larsen, A. G., et al. (2021) Package ‘soc.ca’: Specific Correspondence Analysis for the Social Sciences. Available at: <https://cran.r-project.org/web/packages/soc.ca/index.html>
+
+Le, S., Josse, J. & Husson, F. (2008). FactoMineR: An R Package for Multivariate Analysis. Journal of Statistical Software. 25(1). pp. 1-18. <https://www.jstatsoft.org/v25/i01/>. A website: <http://factominer.free.fr/>
+
+Le Roux, B., & Rouanet, H. (2010). Multiple correspondence analysis. Thousand Oaks: Sage.
